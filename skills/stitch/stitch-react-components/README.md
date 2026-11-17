@@ -29,7 +29,7 @@ skills/react-components/
 
 When activated, the agent follows a high-fidelity engineering pipeline:
 
-1. **Retrieval**: Uses a system-level `curl` script to bypass TLS/SNI issues on Google Cloud Storage.
+1. **Retrieval**: In Codot, uses Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`) + `stitch-preview/scripts/save-stitch-file.mjs` (since `downloadUrl` requires credentials and returns a JSON wrapper). For pre-signed GCS URLs outside Codot, `scripts/fetch-stitch.sh` is provided as a fallback.
 2. **Mapping**: Cross-references Stitch metadata with the local `style-guide.json` to ensure token consistency.
 3. **Generation**: Scaffolds components using a strict Atomic Design pattern.
 4. **Validation**: Runs an automated AST check using `@swc/core` to prevent hardcoded hex values or missing interfaces.

@@ -13,19 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: In Codot, Stitch `downloadUrl` endpoints require credentials and return a
+# JSON wrapper instead of the raw file. Prefer Stitch MCP `download_file` (using
+# `htmlCode.name` / `screenshot.name`) + `stitch-preview/scripts/save-stitch-file.mjs`.
+# Keep this script only for pre-signed public URLs outside Codot.
+
 URL=$1
 OUTPUT=$2
 if [ -z "$URL" ] || [ -z "$OUTPUT" ]; then
-  echo "Usage: $0 <url> <output_path>"
+  echo "Usage: $0 <signed_url> <output_path>"
+  echo "Note: In Codot, prefer MCP download_file + stitch-preview/scripts/save-stitch-file.mjs."
   exit 1
 fi
 mkdir -p "$(dirname "$OUTPUT")"
-echo "Initiating high-reliability fetch for Stitch HTML..."
-curl -L -f -sS --connect-timeout 10 --compressed "$URL" -o "$OUTPUT"
-if [ $? -eq 0 ]; then
-  echo "Successfully retrieved HTML at: $OUTPUT"
+echo "Initiating fetch for Stitch asset (for Codot, prefer MCP download_file)..."
+if curl -L -f -sS --connect-timeout 10 --compressed "$URL" -o "$OUTPUT"; then
+  if head -c 1 "$OUTPUT" | grep -q '{' && ! echo "$OUTPUT" | grep -qiE '\.json$'; then
+    echo "Warning: Response looks like JSON (downloadUrl requires credentials and returns a JSON wrapper)."
+    echo "Use Stitch MCP download_file + stitch-preview/scripts/save-stitch-file.mjs instead."
+    exit 1
+  fi
+  echo "Successfully retrieved asset at: $OUTPUT"
   exit 0
 else
-  echo "Error: Failed to retrieve content. Check TLS/SNI or URL expiration."
+  echo "Error: Failed to retrieve content from URL."
+  echo "In Codot, downloadUrl requires credentials; use Stitch MCP download_file (htmlCode.name / screenshot.name) + stitch-preview/scripts/save-stitch-file.mjs instead."
   exit 1
 fi

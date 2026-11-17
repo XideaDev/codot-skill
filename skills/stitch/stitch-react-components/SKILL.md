@@ -12,7 +12,10 @@ allowed-tools:
 > **Codot Runtime Adaptation**
 > - **Stitch MCP**: Provided centrally via **Codot Settings → MCP** (look for tools prefixed with `stitch:` or `mcp__stitch__`). Do not reconfigure per-agent MCP files.
 > - **Browser & Visual Verification**: Prefer Codot's built-in `browser_*` tools (`browser_navigate`, `browser_snapshot`, `browser_screenshot`, `browser_console`) over external Chrome DevTools MCP when inspecting local dev servers or rendered pages.
-> - **Visual Delivery**: Use `show_preview` to display downloaded `.stitch/designs/*.png` screenshots or extracted static HTML directly to the user.
+> - **Visual Delivery**: `show_preview` is **offline and cannot access the network**; Stitch-exported HTML relies on CDN Tailwind/fonts and renders blank if passed directly. Use the `stitch-preview` skill (local static server + `browser_*` for full fidelity/interaction, or `stitch-offline.mjs` + `show_preview` for in-chat HTML preview, or `show_preview` directly on `.png` screenshots).
+> - **Asset Download**: Always use Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`), **never** `curl` against `downloadUrl` (which requires credentials and returns a JSON wrapper). If `download_file` output is truncated to a temporary file, decode it with `stitch-preview/scripts/save-stitch-file.mjs`.
+> - **Object Parameters**: If an MCP tool fails with `expected object, got string` (some agent runtimes serialize object arguments as strings), switch to the string-only fallback workflow in `stitch-manage-design-system` instead of retrying the same failing call.
+> - **Long-running Calls**: If `generate_screen_from_text` or `edit_screens` times out, poll `list_screens` every 60 seconds for up to ~5 minutes (5 polls); if no new screen appears, re-issue the call once instead of waiting indefinitely.
 > - **Tool Mapping**: Map generic tool names (`Read`, `Write`, `Edit`, `Bash`) to the active Codot harness tools (`read`, `write`, `edit`, `bash`).
 
 # Stitch to React Components
@@ -23,17 +26,20 @@ You are a frontend engineer focused on transforming designs into clean React cod
 
 ## Phase 1: Retrieval and networking
 
-> **GATE: Phase 1 is complete ONLY when all screens have been downloaded via `scripts/fetch-stitch.sh` AND visually audited. Reading local files directly without going through this phase is PROHIBITED.**
+> **GATE: Phase 1 is complete ONLY when all screens have been downloaded via `download_file` (or `scripts/fetch-stitch.sh` if signed URLs work outside Codot) AND visually audited. Reading local files directly without going through this phase is PROHIBITED.**
 
 1. **Namespace discovery**: Run `list_tools` to find the Stitch MCP prefix. Use this prefix (e.g., `stitch:`) for all subsequent calls.
-2. **Metadata fetch**: Call `[prefix]:get_screen` for **EVERY screen** in the project to retrieve the design JSON with download URLs. Do NOT skip any screen.
+2. **Metadata fetch**: Call `[prefix]:get_screen` for **EVERY screen** in the project to retrieve the design JSON with `htmlCode.name` and `screenshot.name` (`projects/{project}/files/{file}`). Do NOT skip any screen.
 3. **Check for existing designs**: Before downloading, check if `.stitch/designs/{page}.html` and `.stitch/designs/{page}.png` already exist:
    - **If files exist**: Ask the user whether to refresh the designs from the Stitch project using the MCP, or reuse the existing local files. **You MUST ask — do not assume.**  Only re-download if the user confirms.
    - **If files do not exist**: Proceed to step 4.
-4. **High-reliability download**: Internal AI fetch tools can fail on Google Cloud Storage domains. You MUST use the provided script.
-   - **HTML**: `bash scripts/fetch-stitch.sh "[htmlCode.downloadUrl]" ".stitch/designs/{page}.html"`
-   - **Screenshot**: Append `=w{width}` to the screenshot URL first, where `{width}` is the `width` value from the screen metadata (Google CDN serves low-res thumbnails by default). Then run: `bash scripts/fetch-stitch.sh "[screenshot.downloadUrl]=w{width}" ".stitch/designs/{page}.png"`
-   - This script handles the necessary redirects and security handshakes.
+4. **High-reliability download (Codot preferred: MCP `download_file`)**:
+   - **Do NOT `curl` `downloadUrl` in Codot**: `downloadUrl` requires credentials and returns a JSON wrapper rather than the raw asset.
+   - Call `[prefix]:download_file` with `htmlCode.name` and save to `.stitch/designs/{page}.html`.
+   - Call `[prefix]:download_file` with `screenshot.name` and save to `.stitch/designs/{page}.png`.
+   - If `download_file` output is truncated to a temporary file, decode it with:
+     `node skills/stitch/stitch-preview/scripts/save-stitch-file.mjs <tool-output> .stitch/designs/{page}.html` (and `.png`).
+   - *(Legacy fallback outside Codot only, when given a pre-signed public GCS URL)*: `bash scripts/fetch-stitch.sh "<signed-url>" ".stitch/designs/{page}.html"`.
 5. **Visual audit**: Review the downloaded screenshot (`.stitch/designs/{page}.png`) to confirm design intent and layout details. **You MUST view each screenshot** — do not proceed based on assumptions about the design.
 6. **Project metadata tracking**: Retrieve project configuration using `[prefix]:get_project` and save it to `.stitch/metadata.json` (inside the app folder, and mirrored in the workspace root). Ensure it has:
    - `projectId`, `title`, `deviceType`
@@ -42,7 +48,7 @@ You are a frontend engineer focused on transforming designs into clean React cod
 
 ### Anti-patterns for Phase 1
 - ❌ Reading `.stitch/designs/*.html` directly without calling MCP `get_screen` first.
-- ❌ Skipping the `fetch-stitch.sh` download script.
+- ❌ Using `curl` against credential-gated `downloadUrl` instead of MCP `download_file`.
 - ❌ Not asking the user when existing files are found.
 - ❌ Skipping the visual audit of `.png` screenshots.
 - ❌ Failing to generate or update `.stitch/metadata.json` and its `Last Sync Time` field upon syncing.

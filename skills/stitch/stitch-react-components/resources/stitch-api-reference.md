@@ -4,8 +4,8 @@ This document describes the data structures returned by the Stitch MCP server to
 
 ### Metadata schema
 When calling `get_screen`, the server returns a JSON object with these key properties:
-* **htmlCode**: Contains a `downloadUrl`. This is a signed URL that requires a system-level fetch (curl) to handle redirects and security handshakes.
-* **screenshot**: Includes a `downloadUrl` for the visual design. Use this to verify layout intent that might not be obvious in the raw HTML.
+* **htmlCode**: Contains `name` (`projects/{project}/files/{file}`) and `downloadUrl`. In Codot, pass `htmlCode.name` to MCP `download_file` (and decode truncated output with `stitch-preview/scripts/save-stitch-file.mjs`). Do **not** `curl` `downloadUrl` directly, as it requires credentials and returns a JSON wrapper.
+* **screenshot**: Contains `name` (`projects/{project}/files/{file}`) and `downloadUrl` for the visual design. Use `download_file` with `screenshot.name` to retrieve the full image. Use this to verify layout intent that might not be obvious in the raw HTML.
 * **deviceType**: Usually set to `DESKTOP`. All generated components should prioritize the corresponding viewport (2560px width) as the base layout.
 
 ### Technical mapping rules

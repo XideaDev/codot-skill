@@ -10,16 +10,25 @@ Uploads a `DESIGN.md` file to a project via the `BatchCreateScreens` endpoint.
 This is the first step in creating a design system from a markdown file.
 
 > [!NOTE]
-> Use the `upload-to-stitch` skill's script instead of the `upload_design_md`
-> MCP tool. The script handles base64 encoding in-process, avoiding the model's
-> output token limit.
+> Use `skills/stitch/stitch-upload-to-stitch/scripts/upload_to_stitch.py` for
+> large `DESIGN.md` files (> ~5KB), or `upload_design_md` directly for smaller
+> files. Get `--api-key` from **Codot Settings → MCP** (`stitch` → `X-Goog-Api-Key`).
 
 ```bash
-python3 <SKILL_DIR>/scripts/upload_to_stitch.py \
+python3 skills/stitch/stitch-upload-to-stitch/scripts/upload_to_stitch.py \
   --project-id <PROJECT_ID> \
   --file-path /path/to/DESIGN.md \
   --api-key <API_KEY>
 ```
+
+> [!WARNING]
+> **Runtime Compatibility (`expected object, got string`)**: The tools below
+> (`create_design_system_from_design_md`, `update_design_system`,
+> `apply_design_system`) accept object parameters (`selectedScreenInstance`,
+> `designSystem`, `selectedScreenInstances`). In runtimes that serialize object
+> arguments as strings, use the **String-Only Fallback Workflow** in
+> `stitch-manage-design-system/SKILL.md` (`upload_design_md` → first
+> `generate_screen_from_text` → `list_design_systems` → pass `designSystem: "assets/<id>"`).
 
 ---
 

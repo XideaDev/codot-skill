@@ -29,7 +29,7 @@ skills/react-native/
 
 When activated, the agent follows a design-to-native pipeline:
 
-1. **Retrieval**: Uses a system-level `curl` script to download Stitch HTML and screenshots from Google Cloud Storage.
+1. **Retrieval**: In Codot, uses Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`) + `stitch-preview/scripts/save-stitch-file.mjs` (since `downloadUrl` requires credentials and returns a JSON wrapper). For pre-signed GCS URLs outside Codot, `scripts/fetch-stitch.sh` is provided as a fallback.
 2. **Mapping**: Translates HTML elements to React Native primitives (`View`, `Text`, `Pressable`, `Image`, etc.) and converts CSS/Tailwind to `StyleSheet.create()` calls.
 3. **Generation**: Scaffolds components using Atomic Design (atoms, molecules, organisms).
 4. **Validation**: Runs an automated AST check to catch missing Props interfaces or hardcoded style values.

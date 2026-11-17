@@ -12,7 +12,10 @@ allowed-tools:
 > **Codot Runtime Adaptation**
 > - **Stitch MCP**: Provided centrally via **Codot Settings → MCP** (look for tools prefixed with `stitch:` or `mcp__stitch__`). Do not reconfigure per-agent MCP files.
 > - **Browser & Visual Verification**: Prefer Codot's built-in `browser_*` tools (`browser_navigate`, `browser_snapshot`, `browser_screenshot`, `browser_console`) over external Chrome DevTools MCP when inspecting local dev servers or rendered pages.
-> - **Visual Delivery**: Use `show_preview` to display downloaded `.stitch/designs/*.png` screenshots or extracted static HTML directly to the user.
+> - **Visual Delivery**: `show_preview` is **offline and cannot access the network**; Stitch-exported HTML relies on CDN Tailwind/fonts and renders blank if passed directly. Use the `stitch-preview` skill (local static server + `browser_*` for full fidelity/interaction, or `stitch-offline.mjs` + `show_preview` for in-chat HTML preview, or `show_preview` directly on `.png` screenshots).
+> - **Asset Download**: Always use Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`), **never** `curl` against `downloadUrl` (which requires credentials and returns a JSON wrapper). If `download_file` output is truncated to a temporary file, decode it with `stitch-preview/scripts/save-stitch-file.mjs`.
+> - **Object Parameters**: If an MCP tool fails with `expected object, got string` (some agent runtimes serialize object arguments as strings), switch to the string-only fallback workflow in `stitch-manage-design-system` instead of retrying the same failing call.
+> - **Long-running Calls**: If `generate_screen_from_text` or `edit_screens` times out, poll `list_screens` every 60 seconds for up to ~5 minutes (5 polls); if no new screen appears, re-issue the call once instead of waiting indefinitely.
 > - **Tool Mapping**: Map generic tool names (`Read`, `Write`, `Edit`, `Bash`) to the active Codot harness tools (`read`, `write`, `edit`, `bash`).
 
 # Generate Design
@@ -36,10 +39,12 @@ user's prompt.
 - **Project**: Use `list_projects` to find the correct `projectId`. If no
   suitable project exists, create one using `create_project`.
 - **Design System**: Check if a design system exists for the project via
-  `list_design_systems`. If one exists, design tokens (colors, fonts, roundness)
-  are already applied at the project level — do NOT include any color, font, or
-  theme instructions in the generation prompt. If none exists, delegate to the
-  **manage-design-system** skill first before generating screens.
+  `list_design_systems`. If one exists (`assets/<id>`), pass it as the
+  `designSystem` string parameter in `generate_screen_from_text`, and avoid
+  conflicting color/theme instructions in the prompt. If none exists, delegate
+  to `stitch-manage-design-system` first (or follow its string-only fallback
+  workflow: `upload_design_md` → first `generate_screen_from_text` auto-creates
+  the design system → `list_design_systems` returns `assets/<id>`).
 
 ### 2. Refine UI/UX Terminology
 
@@ -54,9 +59,15 @@ adjective palettes, color roles, and shape descriptions.
 
 ### 3. Structure the Final Prompt
 
-Format the enhanced prompt for Stitch. Focus exclusively on **layout, content,
-and structure** — never include colors, fonts, or theme instructions (these are
-handled by the manage-design-system skill at the project level).
+Format the enhanced prompt for Stitch. Focus primarily on **layout, content,
+and structure** — keep colors, roundness, and theme tokens in the project-level
+design system. **Font exception**: when the project design system's font (or
+Stitch's auto-selected fonts such as Space Grotesk / Inter / JetBrains Mono)
+differs from platform-native requirements (e.g., iOS requiring SF Pro, which
+Stitch does not provide as a design-system font), you **may** specify the
+target font family explicitly in the prompt. After generation, inspect
+`fontFamily` in the exported HTML `<script id="tailwind-config">` (and use
+`stitch-offline.mjs --system-font` when previewing offline if needed).
 
 For **new screens**, use this template:
 
@@ -80,11 +91,11 @@ For **edits**, be specific about what to change:
   'Learn More'."
 
 > [!CAUTION]
-> Do NOT include hex codes, font names, color palettes, roundness values, or
-> any design system tokens in a **generation** prompt. These are applied at the
-> project level by the manage-design-system skill and will conflict if
-> duplicated. (For **edit** prompts, hex codes are acceptable for precise
-> color adjustments.)
+> Do NOT include hex codes, color palettes, or roundness values in a
+> **generation** prompt when a design system is active — they will conflict if
+> duplicated. Font names should also stay out of generation prompts unless
+> overriding an unsupported platform-native font as noted above. (For **edit**
+> prompts, hex codes are acceptable for precise color adjustments.)
 
 ### 4. Present AI Insights
 
@@ -122,16 +133,22 @@ Use `list_projects` to find the correct `projectId` if it is not already known.
 #### 3. Generate the Screen
 
 Call the `generate_screen_from_text` tool with the enhanced prompt and the
-`designSystem` ID (if found in Step 1).
+`designSystem` string ID (`"assets/<id>"`, if returned by `list_design_systems`).
 
 ```json
 {
   "projectId": "...",
   "prompt": "[Your Enhanced Prompt]",
-  "designSystem": "assets/...", // Optional: Pass if found in Step 1
+  "designSystem": "assets/...", // Optional: string ID from list_design_systems
   "deviceType": "DESKTOP"  // Options: MOBILE, DESKTOP, TABLET
 }
 ```
+
+> [!NOTE]
+> **Timeout Handling**: If `generate_screen_from_text` times out (~60s client
+> timeout), poll `list_screens` every 60 seconds for up to ~5 minutes (5 polls).
+> If no new screen appears, re-issue the same `generate_screen_from_text` call
+> once instead of waiting indefinitely.
 
 #### 4. Present AI Feedback
 
@@ -140,11 +157,13 @@ user.
 
 #### 5. Download Design Assets
 
-After generation, download the HTML and screenshot urls from `outputComponents`
-to the `.stitch/designs` directory.
+After generation, download the HTML and screenshot via Stitch MCP `download_file`
+into `.stitch/designs/`:
 
-- **Naming**: Use the screen ID or a descriptive slug for the filename.
-- **Tools**: Use `curl -o` via `run_command` or similar.
+- **Identifiers**: Pass `htmlCode.name` and `screenshot.name` (`projects/{project}/files/{file}`) to `download_file`. Do **not** use `curl -o` on `downloadUrl` (it requires credentials and returns a JSON wrapper).
+- **Save to disk**: Save as `.stitch/designs/{slug}.html` and `.stitch/designs/{slug}.png`. If `download_file` output is truncated to a temporary file, decode it with:
+  `node skills/stitch/stitch-preview/scripts/save-stitch-file.mjs <tool-output> .stitch/designs/{slug}.html` (and `.png`).
+- **Font check**: Inspect `fontFamily` in `<script id="tailwind-config">` of the downloaded HTML if platform-native fonts (e.g., SF Pro) are required.
 - **Directory**: Ensure `.stitch/designs` exists.
 
 #### 6. Review and Refine
@@ -195,11 +214,12 @@ user.
 
 #### 5. Download Design Assets
 
-Download the HTML and screenshot urls from `outputComponents` to the
-`.stitch/designs` directory.
+Download the HTML and screenshot via Stitch MCP `download_file` (using
+`htmlCode.name` and `screenshot.name`) into `.stitch/designs/`. Do **not** use
+`curl -o` on `downloadUrl`.
 
 - **Naming**: Use the screen ID or a descriptive slug for the filename.
-- **Tools**: Use `curl -o` via `run_command` or similar.
+- **Tools**: `download_file` + `node skills/stitch/stitch-preview/scripts/save-stitch-file.mjs <tool-output> .stitch/designs/{slug}.{html|png}` when output is truncated.
 - **Directory**: Ensure `.stitch/designs` exists.
 
 ---
@@ -223,7 +243,8 @@ Apply the Prompt Enhancement Pipeline, focusing on specificity:
 
 #### 3. Apply the Edit
 
-Call the `edit_screens` tool.
+Call the `edit_screens` tool. If it times out, poll `list_screens` every 60s for
+up to ~5 minutes (5 polls) before re-issuing once.
 
 ```json
 {
@@ -240,12 +261,13 @@ user.
 
 #### 5. Download Design Assets
 
-After editing, download the updated HTML and screenshot urls from
-`outputComponents` to the `.stitch/designs` directory, overwriting previous
-versions to ensure the local files reflect the latest edits.
+After editing, download the updated HTML and screenshot via Stitch MCP
+`download_file` (using `htmlCode.name` and `screenshot.name`) into
+`.stitch/designs/`, overwriting previous versions so local files reflect the
+latest edits. Do **not** use `curl -o` on `downloadUrl`.
 
 - **Naming**: Use the screen ID or a descriptive slug for the filename.
-- **Tools**: Use `curl -o` via `run_command` or similar.
+- **Tools**: `download_file` + `node skills/stitch/stitch-preview/scripts/save-stitch-file.mjs <tool-output> .stitch/designs/{slug}.{html|png}` when output is truncated.
 - **Directory**: Ensure `.stitch/designs` exists.
 
 #### 6. Update Project Metadata
@@ -289,6 +311,13 @@ Call the `generate_variants` tool with the appropriate options:
 }
 ```
 
+> [!WARNING]
+> **Object Parameter Fallback**: `variantOptions` is an object parameter. If the
+> active agent runtime rejects it with `expected object, got string`, do **not**
+> retry `generate_variants` — instead create variations using multiple targeted
+> `edit_screens` calls (or separate `generate_screen_from_text` calls with the
+> `designSystem` string ID).
+
 **Variant Options:**
 - **`variantCount`**: 1–5 variants (default: 3)
 - **`creativeRange`**: `REFINE` (subtle), `EXPLORE` (balanced), or `REIMAGINE`
@@ -303,11 +332,12 @@ user.
 
 #### 4. Download Design Assets
 
-Download the variant HTML and screenshot urls from `outputComponents` to the
-`.stitch/designs` directory.
+Download the variant HTML and screenshot via Stitch MCP `download_file` (using
+`htmlCode.name` and `screenshot.name`) into `.stitch/designs/`. Do **not** use
+`curl -o` on `downloadUrl`.
 
 - **Naming**: Use the screen ID or a descriptive slug for the filename.
-- **Tools**: Use `curl -o` via `run_command` or similar.
+- **Tools**: `download_file` + `node skills/stitch/stitch-preview/scripts/save-stitch-file.mjs <tool-output> .stitch/designs/{slug}.{html|png}` when output is truncated.
 - **Directory**: Ensure `.stitch/designs` exists.
 
 --------------------------------------------------------------------------------
@@ -320,8 +350,9 @@ Download the variant HTML and screenshot urls from `outputComponents` to the
   rather than how it looks.
 - **Iterative Polish**: Prefer editing for targeted adjustments over full
   re-generation.
-- **No theme leakage**: Never put hex codes, font names, or color roles in a
-  generation prompt — the design system handles all visual styling.
+- **No theme leakage**: Avoid hex codes or color roles in a generation prompt
+  when a design system is active — only add explicit font names when overriding
+  an unsupported platform-native font (e.g., SF Pro for iOS).
 - **Specify interactions**: Mention hover states, animations, and click behavior
   rather than visual styling.
 - **Keep edits focused**: One edit at a time is often better than a long list of

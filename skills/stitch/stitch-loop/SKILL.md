@@ -12,7 +12,10 @@ allowed-tools:
 > **Codot Runtime Adaptation**
 > - **Stitch MCP**: Provided centrally via **Codot Settings → MCP** (look for tools prefixed with `stitch:` or `mcp__stitch__`). Do not reconfigure per-agent MCP files.
 > - **Browser & Visual Verification**: Prefer Codot's built-in `browser_*` tools (`browser_navigate`, `browser_snapshot`, `browser_screenshot`, `browser_console`) over external Chrome DevTools MCP when inspecting local dev servers or rendered pages.
-> - **Visual Delivery**: Use `show_preview` to display downloaded `.stitch/designs/*.png` screenshots or extracted static HTML directly to the user.
+> - **Visual Delivery**: `show_preview` is **offline and cannot access the network**; Stitch-exported HTML relies on CDN Tailwind/fonts and renders blank if passed directly. Use the `stitch-preview` skill (local static server + `browser_*` for full fidelity/interaction, or `stitch-offline.mjs` + `show_preview` for in-chat HTML preview, or `show_preview` directly on `.png` screenshots).
+> - **Asset Download**: Always use Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`), **never** `curl` against `downloadUrl` (which requires credentials and returns a JSON wrapper). If `download_file` output is truncated to a temporary file, decode it with `stitch-preview/scripts/save-stitch-file.mjs`.
+> - **Object Parameters**: If an MCP tool fails with `expected object, got string` (some agent runtimes serialize object arguments as strings), switch to the string-only fallback workflow in `stitch-manage-design-system` instead of retrying the same failing call.
+> - **Long-running Calls**: If `generate_screen_from_text` or `edit_screens` times out, poll `list_screens` every 60 seconds for up to ~5 minutes (5 polls); if no new screen appears, re-issue the call once instead of waiting indefinitely.
 > - **Tool Mapping**: Map generic tool names (`Read`, `Write`, `Edit`, `Bash`) to the active Codot harness tools (`read`, `write`, `edit`, `bash`).
 
 # Stitch Build Loop
@@ -99,9 +102,7 @@ Use the Stitch MCP tools to generate the page:
    - `deviceType`: `DESKTOP` (or as specified)
 4. **Retrieve assets**: Before downloading, check if `.stitch/designs/{page}.html` and `.stitch/designs/{page}.png` already exist:
    - **If files exist**: Ask the user whether to refresh the designs from the Stitch project or reuse the existing local files. Only re-download if the user confirms.
-   - **If files do not exist**: Proceed with download:
-     - `htmlCode.downloadUrl` — Download and save as `.stitch/designs/{page}.html`
-      - `screenshot.downloadUrl` — Append `=w{width}` to the URL before downloading, where `{width}` is the `width` value from the screen metadata (Google CDN serves low-res thumbnails by default). Save as `.stitch/designs/{page}.png`
+   - **If files do not exist**: Call `[prefix]:download_file` with `htmlCode.name` and `screenshot.name` (`projects/{project}/files/{file}`) — do **not** `curl` `downloadUrl` (it requires credentials and returns JSON). Save to `.stitch/designs/{page}.html` and `.stitch/designs/{page}.png`; if the MCP output is truncated to a temporary file, decode it with `node skills/stitch/stitch-preview/scripts/save-stitch-file.mjs <tool-output> .stitch/designs/{page}.{html|png}`.
 
 ### Step 4: Integrate into Site
 
@@ -114,16 +115,13 @@ Use the Stitch MCP tools to generate the page:
 
 ### Step 4.5: Visual Verification (Optional)
 
-If the **Chrome DevTools MCP Server** is available, verify the generated page:
+Verify the generated page using Codot's `stitch-preview` workflow (built-in `browser_*` tools):
 
-1. **Check availability**: Run `list_tools` to see if `chrome*` tools are present
-2. **Start dev server**: Use Bash to start a local server (e.g., `npx serve site/public`)
-3. **Navigate to page**: Call `[chrome_prefix]:navigate` to open `http://localhost:3000/{page}.html`
-4. **Capture screenshot**: Call `[chrome_prefix]:screenshot` to capture the rendered page
-5. **Visual comparison**: Compare against the Stitch screenshot (`.stitch/designs/{page}.png`) for fidelity
-6. **Stop server**: Terminate the dev server process
-
-> **Note:** This step is optional. If Chrome DevTools MCP is not installed, skip to Step 5.
+1. **Start local static server**: Use `terminal_run` to serve `site/public` on `127.0.0.1` (e.g., `python3 -m http.server 18123 --bind 127.0.0.1 --directory site/public`).
+2. **Navigate to page**: Call `browser_navigate` to open `http://127.0.0.1:18123/{page}.html`.
+3. **Capture screenshot**: Call `browser_screenshot` to capture the rendered page and `browser_console` to check for errors.
+4. **Visual comparison**: Compare against `.stitch/designs/{page}.png` for fidelity.
+5. **Stop server**: Terminate the static server with `terminal_stop`.
 
 ### Step 5: Update Site Documentation
 

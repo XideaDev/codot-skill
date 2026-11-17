@@ -12,7 +12,10 @@ allowed-tools:
 > **Codot Runtime Adaptation**
 > - **Stitch MCP**: Provided centrally via **Codot Settings → MCP** (look for tools prefixed with `stitch:` or `mcp__stitch__`). Do not reconfigure per-agent MCP files.
 > - **Browser & Visual Verification**: Prefer Codot's built-in `browser_*` tools (`browser_navigate`, `browser_snapshot`, `browser_screenshot`, `browser_console`) over external Chrome DevTools MCP when inspecting local dev servers or rendered pages.
-> - **Visual Delivery**: Use `show_preview` to display downloaded `.stitch/designs/*.png` screenshots or extracted static HTML directly to the user.
+> - **Visual Delivery**: `show_preview` is **offline and cannot access the network**; Stitch-exported HTML relies on CDN Tailwind/fonts and renders blank if passed directly. Use the `stitch-preview` skill (local static server + `browser_*` for full fidelity/interaction, or `stitch-offline.mjs` + `show_preview` for in-chat HTML preview, or `show_preview` directly on `.png` screenshots).
+> - **Asset Download**: Always use Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`), **never** `curl` against `downloadUrl` (which requires credentials and returns a JSON wrapper). If `download_file` output is truncated to a temporary file, decode it with `stitch-preview/scripts/save-stitch-file.mjs`.
+> - **Object Parameters**: If an MCP tool fails with `expected object, got string` (some agent runtimes serialize object arguments as strings), switch to the string-only fallback workflow in `stitch-manage-design-system` instead of retrying the same failing call.
+> - **Long-running Calls**: If `generate_screen_from_text` or `edit_screens` times out, poll `list_screens` every 60 seconds for up to ~5 minutes (5 polls); if no new screen appears, re-issue the call once instead of waiting indefinitely.
 > - **Tool Mapping**: Map generic tool names (`Read`, `Write`, `Edit`, `Bash`) to the active Codot harness tools (`read`, `write`, `edit`, `bash`).
 
 # Code to Design
@@ -37,8 +40,8 @@ Follow these steps to convert your existing code.
 
 #### 1. Extract Self-Contained HTML
 
-Delegate to the `extract-static-html` skill to generate a standalone HTML file.
-Read [skills/extract-static-html/SKILL.md](../extract-static-html/SKILL.md) for detailed instructions and script usage.
+Delegate to the `stitch-extract-static-html` skill to generate a standalone HTML file.
+Read [skills/stitch/stitch-extract-static-html/SKILL.md](../stitch-extract-static-html/SKILL.md) for detailed instructions and script usage.
 
 Expected output: A single file like `/path/to/extracted/standalone.html`.
 
@@ -52,31 +55,31 @@ If the user reports issues after reviewing, fix them before continuing.
 
 #### 3. Extract Design System (File)
 
-Delegate to the `extract-design-md` skill to analyze the project's source files
+Delegate to the `stitch-extract-design-md` skill to analyze the project's source files
 (components, stylesheets, theme configs) and produce a design system. Read
-[skills/extract-design-md/SKILL.md](../extract-design-md/SKILL.md) for the
+[skills/stitch/stitch-extract-design-md/SKILL.md](../stitch-extract-design-md/SKILL.md) for the
 full analysis workflow.
 
-Write `.stitch/DESIGN.md` following the `extract-design-md` skill's output
+Write `.stitch/DESIGN.md` following the `stitch-extract-design-md` skill's output
 structure.
 
 #### 4. Upload DESIGN.md and Create Design System in Stitch
 
-Delegate to the `manage-design-system` skill to upload the `DESIGN.md` and
+Delegate to the `stitch-manage-design-system` skill to upload the `DESIGN.md` and
 create the design system in Stitch. Read
-[skills/manage-design-system/SKILL.md](../manage-design-system/SKILL.md) for
+[skills/stitch/stitch-manage-design-system/SKILL.md](../stitch-manage-design-system/SKILL.md) for
 the full workflow (upload script usage, `create_design_system_from_design_md`
-call, and required schemas). Pass
-`--generated-by 'stitch::code-to-design'` when uploading.
+call, string-only fallback workflow, and required schemas). Pass
+`--generated-by 'stitch-code-to-design'` when uploading.
 
 #### 5. Upload HTML to Stitch
 
-Use the same `upload-to-stitch` skill's script to upload the extracted HTML file.
-Read [skills/upload-to-stitch/SKILL.md](../upload-to-stitch/SKILL.md) for detailed instructions and script usage.
+Use the `stitch-upload-to-stitch` skill's script to upload the extracted HTML file.
+Read [skills/stitch/stitch-upload-to-stitch/SKILL.md](../stitch-upload-to-stitch/SKILL.md) for detailed instructions and script usage.
 
 You will need:
 - The path to the standalone HTML file generated in Step 1.
-- Your Stitch API Key (same key used in Step 4).
+- Your Stitch API Key (from **Codot Settings → MCP** → `stitch` → `X-Goog-Api-Key`).
 - The target `projectId`.
-- The `--generated-by` argument set to `'stitch::extract-static-html'`.
+- The `--generated-by` argument set to `'stitch-extract-static-html'`.
 - The `--title` argument set to the **route path** of the page (e.g., `'/dashboard'`, `'/settings/profile'`, `'/inbox'`) so that the screen name/title in Stitch clearly identifies its route in the application.

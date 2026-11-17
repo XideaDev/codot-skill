@@ -12,7 +12,10 @@ allowed-tools:
 > **Codot Runtime Adaptation**
 > - **Stitch MCP**: Provided centrally via **Codot Settings → MCP** (look for tools prefixed with `stitch:` or `mcp__stitch__`). Do not reconfigure per-agent MCP files.
 > - **Browser & Visual Verification**: Prefer Codot's built-in `browser_*` tools (`browser_navigate`, `browser_snapshot`, `browser_screenshot`, `browser_console`) over external Chrome DevTools MCP when inspecting local dev servers or rendered pages.
-> - **Visual Delivery**: Use `show_preview` to display downloaded `.stitch/designs/*.png` screenshots or extracted static HTML directly to the user.
+> - **Visual Delivery**: `show_preview` is **offline and cannot access the network**; Stitch-exported HTML relies on CDN Tailwind/fonts and renders blank if passed directly. Use the `stitch-preview` skill (local static server + `browser_*` for full fidelity/interaction, or `stitch-offline.mjs` + `show_preview` for in-chat HTML preview, or `show_preview` directly on `.png` screenshots).
+> - **Asset Download**: Always use Stitch MCP `download_file` (with `htmlCode.name` / `screenshot.name`), **never** `curl` against `downloadUrl` (which requires credentials and returns a JSON wrapper). If `download_file` output is truncated to a temporary file, decode it with `stitch-preview/scripts/save-stitch-file.mjs`.
+> - **Object Parameters**: If an MCP tool fails with `expected object, got string` (some agent runtimes serialize object arguments as strings), switch to the string-only fallback workflow in `stitch-manage-design-system` instead of retrying the same failing call.
+> - **Long-running Calls**: If `generate_screen_from_text` or `edit_screens` times out, poll `list_screens` every 60 seconds for up to ~5 minutes (5 polls); if no new screen appears, re-issue the call once instead of waiting indefinitely.
 > - **Tool Mapping**: Map generic tool names (`Read`, `Write`, `Edit`, `Bash`) to the active Codot harness tools (`read`, `write`, `edit`, `bash`).
 
 # Upload-to-Stitch
@@ -33,7 +36,8 @@ Use `list_projects` to find the correct `projectId`.
 
 ### 2. Get the API Key
 
-Locate your active MCP server configuration file and extract the API key:
+In Codot, check **Codot Settings → MCP** for the `stitch` service's `X-Goog-Api-Key` header (never store or commit real keys in files), or locate your active MCP configuration if running outside Codot:
+- **Codot**: **Settings → MCP** → `stitch` → `X-Goog-Api-Key` header
 - **Antigravity**: `.gemini/antigravity/mcp_config.json` or `.gemini/jetski/mcp_config.json`
 - **Gemini CLI**: `~/.gemini/settings.json` or `~/.gemini/extensions/Stitch/gemini-extension.json`
 - **Claude Code**: `~/.claude.json`
@@ -44,7 +48,7 @@ Extract:
   `https://stitch.googleapis.com`)
 
 > [!IMPORTANT]
-> If you cannot find the API key in any of these locations, or if you cannot access these files, you MUST ask the user to provide the Stitch API key. Do not proceed without a valid API key.
+> If you cannot find the API key, ask the user to provide the Stitch API key from **Codot Settings → MCP**. Do not proceed without a valid API key.
 
 ### 3. Run Upload Script
 
@@ -57,7 +61,7 @@ Extract:
 Use `run_command` to execute the Python script:
 
 ```bash
-python3 <SKILL_DIR>/scripts/upload_to_stitch.py \
+python3 skills/stitch/stitch-upload-to-stitch/scripts/upload_to_stitch.py \
   --project-id <PROJECT_ID> \
   --file-path <PATH_TO_FILE> \
   --api-key <API_KEY> \
@@ -72,7 +76,7 @@ python3 <SKILL_DIR>/scripts/upload_to_stitch.py \
 > 
 > The script automatically attempts to use the `certifi` package to load the CA bundle if it is installed in your python environment. If `certifi` is not installed, you can either install it (`pip install certifi`) or manually supply the `SSL_CERT_FILE` environment variable when running the script:
 > ```bash
-> SSL_CERT_FILE=$(python3 -c "import certifi; print(certifi.where())") python3 <SKILL_DIR>/scripts/upload_to_stitch.py \
+> SSL_CERT_FILE=$(python3 -c "import certifi; print(certifi.where())") python3 skills/stitch/stitch-upload-to-stitch/scripts/upload_to_stitch.py \
 >   --project-id <PROJECT_ID> \
 >   --file-path <PATH_TO_FILE> \
 >   --api-key <API_KEY> \
@@ -100,4 +104,4 @@ The script auto-detects MIME type from the file extension.
 - `--api-key`: **Required**. API key for Stitch authorization.
 - `--api-url`: Optional. Base URL of the Stitch API. Defaults to `https://stitch.googleapis.com`.
 - `--title`: Optional. Title for the uploaded screen. When uploading extracted HTML from a web app, set this to the **route path** of the page (e.g., `'/dashboard'`, `'/settings/profile'`, `'/inbox'`) so that the screen name/title in Stitch clearly identifies the route.
-- `--generated-by`: Optional. Specify how the uploaded file was generated (e.g., 'stitch::extract-static-html' skill, 'Claude Code', 'Codex', 'Gemini' etc.).
+- `--generated-by`: Optional. Specify how the uploaded file was generated (e.g., `'stitch-extract-static-html'` skill, `'Claude Code'`, `'Codex'`, `'Gemini'` etc.).
