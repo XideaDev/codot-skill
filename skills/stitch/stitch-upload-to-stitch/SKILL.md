@@ -1,5 +1,5 @@
 ---
-name: upload-to-stitch
+name: stitch-upload-to-stitch
 description: "将本地视觉资产（图片、原型图、提取的 HTML、DESIGN.md）上传至 Stitch 项目，特别适用于解决直接调用 MCP 时因 base64 Token 过长导致的失败或截断问题。"
 allowed-tools:
   - "stitch*:*"

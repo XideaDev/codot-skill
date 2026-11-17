@@ -1,5 +1,5 @@
 ---
-name: react-native
+name: stitch-react-native
 description: "将 Stitch HTML 设计稿转换为生产级 React Native 组件（StyleSheet 与跨平台适配），或将现有原生组件同步至 Stitch 最新设计。"
 allowed-tools:
   - "stitch*:*"

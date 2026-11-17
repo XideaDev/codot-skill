@@ -1,5 +1,5 @@
 ---
-name: react-components
+name: stitch-react-components
 description: "将 Stitch 设计稿转换为模块化的 Vite + React 组件系统，或将现有 React 组件同步更新至 Stitch 最新设计，内置下载脚本与 AST 校验。"
 allowed-tools:
   - "stitch*:*"

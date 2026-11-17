@@ -1,5 +1,5 @@
 ---
-name: manage-design-system
+name: stitch-manage-design-system
 description: "通过 Stitch MCP 管理 Stitch 中的设计系统：获取设计资产、创建或更新 DESIGN.md 主题，并将其应用到指定页面。"
 allowed-tools:
   - "stitch*:*"

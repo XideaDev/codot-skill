@@ -1,5 +1,5 @@
 ---
-name: site-md
+name: stitch-site-md
 description: "分析项目描述或网站需求，生成用于 Stitch Build Loop（stitch-loop）的整站规划宪章文档 SITE.md。"
 allowed-tools:
   - "Read"

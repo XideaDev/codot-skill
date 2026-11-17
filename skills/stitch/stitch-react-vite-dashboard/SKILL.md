@@ -1,5 +1,5 @@
 ---
-name: react-vite-dashboard
+name: stitch-react-vite-dashboard
 description: "将 Stitch 设计稿转换为基于 React + Vite 的生产级仪表盘应用，集成 TanStack Query、DESIGN.md 无障碍 Token 及 Web3（ethers/viem）数据读取模式。"
 allowed-tools:
   - "stitch*:*"

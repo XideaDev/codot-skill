@@ -1,5 +1,5 @@
 ---
-name: taste-design
+name: stitch-taste-design
 description: "面向 Google Stitch 的高审美设计系统技能：生成反对平庸模板感的 DESIGN.md，严格规范排版字阶、克制配色、非对称布局与微交互性能。"
 allowed-tools:
   - "StitchMCP"

@@ -1,5 +1,5 @@
 ---
-name: code-to-design
+name: stitch-code-to-design
 description: "将现有前端代码（Vite、React、Angular、Vue 等）转换为 Stitch 设计稿：自动串联静态 HTML 提取、DESIGN.md 设计规范抽取并上传至 Stitch。当用户意图把现有 Web 应用或前端组件迁移、保存或上传到 Stitch 时必须使用此技能。"
 allowed-tools:
   - "stitch*:*"

@@ -1,5 +1,5 @@
 ---
-name: generate-design
+name: stitch-generate-design
 description: "通过 Stitch MCP 根据文本提示词或参考图生成新页面，编辑现有页面、应用设计系统 Token，并生成多套设计变体。"
 allowed-tools:
   - "stitch*:*"

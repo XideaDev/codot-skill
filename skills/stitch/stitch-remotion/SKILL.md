@@ -1,5 +1,5 @@
 ---
-name: remotion
+name: stitch-remotion
 description: "使用 Remotion 将 Stitch 项目中的多个页面自动生成为带平滑转场、缩放与文字叠加的产品演示视频。"
 allowed-tools:
   - "stitch*:*"

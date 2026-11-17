@@ -1,5 +1,5 @@
 ---
-name: extract-design-md
+name: stitch-extract-design-md
 description: "从现有前端源码（React、Vue、Svelte、Angular 或纯 HTML/CSS）中逆向提取完整的 DESIGN.md 设计系统文档，分析组件、样式表、Tailwind 配置与设计 Token。当用户需要审计视觉规范或从代码提取设计语言时使用。"
 allowed-tools:
   - "stitch*:*"

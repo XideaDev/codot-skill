@@ -1,5 +1,5 @@
 ---
-name: enhance-prompt
+name: stitch-enhance-prompt
 description: "将模糊的 UI 想法优化为高精度、适配 Stitch 的专业提示词：补全细节、注入 UI/UX 关键词与设计系统上下文，显著提升页面生成质量。"
 allowed-tools:
   - "Read"
