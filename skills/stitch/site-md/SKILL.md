@@ -1,6 +1,6 @@
 ---
 name: site-md
-description: Analyze a project description or site requirements and synthesize a project constitution into SITE.md for the Stitch Build Loop
+description: "分析项目描述或网站需求，生成用于 Stitch Build Loop（stitch-loop）的整站规划宪章文档 SITE.md。"
 allowed-tools:
   - "Read"
   - "Write"

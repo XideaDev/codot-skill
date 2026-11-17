@@ -1,6 +1,6 @@
 ---
 name: remotion
-description: Generate walkthrough videos from Stitch projects using Remotion with smooth transitions, zooming, and text overlays
+description: "使用 Remotion 将 Stitch 项目中的多个页面自动生成为带平滑转场、缩放与文字叠加的产品演示视频。"
 allowed-tools:
   - "stitch*:*"
   - "remotion*:*"

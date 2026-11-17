@@ -1,6 +1,6 @@
 ---
 name: shadcn-ui
-description: Expert guidance for integrating and building applications with shadcn/ui components, including component discovery, installation, customization, and best practices.
+description: "提供 shadcn/ui 组件库的专业集成与开发指导，涵盖组件发现、安装、样式定制与最佳实践。"
 allowed-tools:
   - "shadcn*:*"
   - "mcp_shadcn*"

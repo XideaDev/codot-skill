@@ -1,7 +1,6 @@
 ---
 name: extract-static-html
-description: >-
-  Extract self-contained static HTML from a built web application or React components by inlining CSS and images. Use this skill whenever you need to capture a specific UI state, share a static version of a page, or prepare assets for Stitch upload, even if the user just asks to 'save the HTML' or 'mock the view'.
+description: "从运行中的 Web 应用或 React 组件中提取自包含的静态 HTML 快照（内联 CSS 与图片），用于捕获特定 UI 状态或准备上传至 Stitch 的静态页面。"
 allowed-tools:
   - "stitch*:*"
   - "Bash"

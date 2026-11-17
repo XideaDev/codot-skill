@@ -1,8 +1,6 @@
 ---
 name: code-to-design
-description: >-
-  Convert frontend code (Vite, React, Angular, Vue, etc.) to a Stitch Design by chaining
-  static HTML extraction, design system extraction, and file upload. **ALWAYS** use this skill when the user's intent is to move existing web apps or React/Angular/Vue components into Stitch (e.g., requests to "save", "migrate", or "upload"). You must use this skill even for simple "save" operations, as it is the only way to ensure the design system is extracted and assets are properly linked.
+description: "将现有前端代码（Vite、React、Angular、Vue 等）转换为 Stitch 设计稿：自动串联静态 HTML 提取、DESIGN.md 设计规范抽取并上传至 Stitch。当用户意图把现有 Web 应用或前端组件迁移、保存或上传到 Stitch 时必须使用此技能。"
 allowed-tools:
   - "stitch*:*"
   - "Bash"

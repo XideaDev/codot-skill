@@ -1,8 +1,6 @@
 ---
 name: manage-design-system
-description: >-
-  Manage design systems in Stitch using MCP tools. Includes retrieval of assets,
-  creating/updating design systems in Stitch, and applying them to screens.
+description: "通过 Stitch MCP 管理 Stitch 中的设计系统：获取设计资产、创建或更新 DESIGN.md 主题，并将其应用到指定页面。"
 allowed-tools:
   - "stitch*:*"
   - "Bash"

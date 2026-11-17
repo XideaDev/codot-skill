@@ -1,8 +1,6 @@
 ---
 name: react-native
-description: >-
-  Convert Stitch HTML designs to React Native components, or syncs/updates existing
-  native components to align with the latest Stitch designs, using StyleSheet.
+description: "将 Stitch HTML 设计稿转换为生产级 React Native 组件（StyleSheet 与跨平台适配），或将现有原生组件同步至 Stitch 最新设计。"
 allowed-tools:
   - "stitch*:*"
   - "Bash"

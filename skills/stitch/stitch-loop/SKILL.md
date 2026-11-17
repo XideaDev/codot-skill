@@ -1,6 +1,6 @@
 ---
 name: stitch-loop
-description: Teaches agents to iteratively build websites using Stitch with an autonomous baton-passing loop pattern
+description: "通过接力任务文件（.stitch/next-prompt.md）实现自治迭代循环，指导 Agent 借助 Stitch 连续生成并集成多页网站。"
 allowed-tools:
   - "stitch*:*"
   - "chrome*:*"
