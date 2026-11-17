@@ -17,9 +17,12 @@
 
 源自 [google-labs-code/stitch-skills](https://github.com/google-labs-code/stitch-skills)（Apache-2.0），针对 **Codot** 做了以下专属优化：
 
-- **命名规范化**：移除原仓库中的 `stitch::` 前缀，确保所有 16 个技能的 `name` 与目录名严格一致，满足 Codot 校验规则（`^[a-z0-9][a-z0-9-]{0,63}$`），全部可直接开关启用。
+- **命名规范化**：移除原仓库中的 `stitch::` 前缀，确保所有 17 个技能的 `name` 与目录名严格一致，满足 Codot 校验规则（`^[a-z0-9][a-z0-9-]{0,63}$`），全部可直接开关启用。
 - **Codot MCP 统一接入**：适配 **Codot 设置 → MCP** 集中注入模式，无需在单个 Agent（Claude / OpenCode / Codex）里重复配置 MCP。
-- **内置浏览器与预览适配**：优先使用 Codot 内置 `browser_*`（浏览/截图/控制台检查）与 `show_preview`（直接在对话展示设计稿截图与 HTML），替代外部 Chrome DevTools MCP。
+- **预览双路径与 HTML 离线化**：新增 `stitch-preview` 技能，明确区分两条预览路径——需要完整保真与交互时使用本地静态服务配合内置 `browser_*`；需用离线无网的 `show_preview` 放进对话时，先通过 `stitch-offline.mjs` 内联 Tailwind CSS 与 Material Symbols 字体子集（或直接展示 `.png` 截图）。
+- **资产可靠下载（`download_file`）**：统一改用 Stitch MCP `download_file` 替代需要凭证的 `curl downloadUrl`，并提供 `save-stitch-file.mjs` 解码被运行时截断保存的完整输出文件。
+- **对象参数字符串兼容流程**：针对部分 Agent 运行时将 MCP 对象参数序列化为字符串（`expected object, got string`）的问题，在 `stitch-manage-design-system` 与 `stitch-generate-design` 中提供纯字符串备用流程（`upload_design_md` → 首次生成自动创建设计系统 → 传入 `assets/<id>`）。
+- **长耗时调用超时策略**：生成或编辑屏幕超时后，按每 60 秒轮询 `list_screens` 最多约 5 分钟的策略确认结果，避免无限等待或丢请求。
 
 ### 使用前置条件
 
@@ -29,12 +32,13 @@
 - **URL**：`https://stitch.googleapis.com/mcp`
 - **Header**：`X-Goog-Api-Key: <你的 Stitch API Key>`
 
-### 包含技能（16 个）
+### 包含技能（17 个）
 
 #### 设计与画布管理
 | 技能 | 说明 |
 |---|---|
 | `stitch-generate-design` | 通过自然语言或参考图在 Stitch 生成新页面、修改现有页面、生成变体 |
+| `stitch-preview` | 下载 Stitch 设计稿并通过本地浏览器完整验收，或离线化 HTML 后在 `show_preview` 展示 |
 | `stitch-code-to-design` | 将现有前端项目（React / Vue / Angular 等）提取并上传到 Stitch |
 | `stitch-manage-design-system` | 在 Stitch 中管理设计系统、上传 `DESIGN.md` 并应用到屏幕 |
 | `stitch-extract-design-md` | 从现有前端源码逆向提取 `DESIGN.md` 设计规范 |
@@ -58,6 +62,12 @@
 | `stitch-site-md` | 生成用于 `stitch-loop` 的整站规划文档 `SITE.md` |
 | `stitch-loop` | 基于接力任务文件连续自动构建多页网站 |
 | `stitch-taste-design` | 生成反平庸、高审美标准的 `DESIGN.md` |
+
+---
+
+## 更新记录
+
+- **2026-04（Stitch Codot 实战优化）**：新增 `stitch-preview` 技能及 `save-stitch-file.mjs` / `stitch-offline.mjs` 脚本；全面更新现有 16 个技能的 Codot 运行时适配说明，修复 `downloadUrl` 下载失败、离线 `show_preview` 白屏、MCP 对象参数序列化报错与生成超时轮询问题。
 
 ---
 
